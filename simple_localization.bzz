@@ -1,0 +1,126 @@
+#This code is my first baby steps in BUZZ
+
+xpos = 0
+ypos = 0
+azimuth_robot_wrt_origin = 0
+psi = 0
+
+#this function establishes an origin and lets all robots know their positions 
+#and orientations with respect to this origin robot
+function localize(){
+	#If you are agent 0, then calculate the positions of all neighbors then broadcast
+	# them to all other robots
+	if(id==0){
+	set_leds(255,0,0)
+	neighbors.foreach(function(rid,data){
+	out_data = {}
+	x = data.distance * math.cos(data.azimuth)
+	y = data.distance * math.sin(data.azimuth)
+	out_data[1] = x
+	out_data[2] = y
+	out_data[3] = data.azimuth
+	message_id = string.tostring(rid)
+	neighbors.broadcast(message_id,out_data)
+	})
+	#log(id,'	',out_data[3]*180/math.pi)
+	#set_wheels(10.0,10.0) #To know the positive direction of the robot0
+	}
+	else{
+	message_id = string.tostring(id)
+	neighbors.listen(message_id,function(vid,value,rid){
+		if(rid == 0){#if the message is from the base node
+			xpos = value[1]
+			ypos = value[2]
+			azimuth_robot_wrt_origin = value[3] #that's what I call alpha
+			if(xpos == 2)set_leds(0,255,255) #just for testing purposes
+		}
+	})
+	neighbors.foreach(function(rid,data){
+		if(rid == 0){
+		azimuth_origin_wrt_robot = data.azimuth
+		x_origin = data.distance*math.cos(data.azimuth)
+		y_origin = data.distance*math.sin(data.azimuth)
+
+		#The next part relates the azimuthes of both robots and the rotation angle psi
+		if(azimuth_robot_wrt_origin > 0){
+			if(azimuth_origin_wrt_robot < 0){
+				psi = -math.pi + math.abs(azimuth_robot_wrt_origin) + math.abs(azimuth_origin_wrt_robot)
+			}
+			else{
+				psi = math.pi + math.abs(azimuth_robot_wrt_origin) - math.abs(azimuth_origin_wrt_robot)
+			}
+		}
+		else{
+			if(azimuth_origin_wrt_robot < 0){
+				psi = -(math.pi + math.abs(azimuth_robot_wrt_origin) - math.abs(azimuth_origin_wrt_robot))
+			}
+			else{
+				psi = -(-math.pi + math.abs(azimuth_robot_wrt_origin) + math.abs(azimuth_origin_wrt_robot))
+			}
+		}
+		
+		#This part makes sure to make the psi angle in the range of -pi->pi
+		if(math.abs(psi) > math.pi){
+		psi = psi - 2*math.pi * (psi / math.abs(psi))
+		}
+
+
+		#if(id == 1)log(psi*180/math.pi)
+		#if(id == 1)log(azimuth_origin_wrt_robot*180/math.pi,'	',psi*180/math.pi)
+		if(id == 1)log(xpos,'	',ypos)
+		}
+		#going towards a certain goal wrt the specified origin
+		go_to_goal(50,-50,psi)
+		#set_wheels(10.0,10.0)
+	})
+	}
+}
+
+function go_to_goal(x_target,y_target,current_heading){
+	#this function makes a robot move towards a certain origin
+	k = 6.0
+	left = 0
+	right = 0
+
+	#calculating the distance from the target
+	dist = math.sqrt((x_target-xpos)*(x_target-xpos) + (y_target-ypos)*(y_target-ypos))
+	#if(id == 1)log(dist)
+
+	#calculating heading to target
+	heading_to_target = math.atan(y_target-ypos,x_target-xpos)
+	
+	#calculating error between current heading and heading to target
+	error = heading_to_target - current_heading
+
+	#applying a pid control to steer the robot towards the target
+	if(dist > 10){
+	left =  6.0 + error*k
+	right = 6.0 - error*k
+	set_wheels(right,left)
+	}
+	else{
+	set_wheels(0.0,0.0)
+	}
+}
+
+#################################################
+### BUZZ FUNCTIONS ##############################
+#################################################
+
+# Executed at init time
+function init() { 
+}
+
+# Executed every time step
+function step() {
+  #go_ahead()
+  #rendezvous_for_two()
+  localize()
+}
+
+# Executed once when the robot (or the simulator) is reset.
+function reset() {
+}
+# Execute at exit
+function destroy() {
+}
