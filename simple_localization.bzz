@@ -32,16 +32,6 @@ function localize(){
 		)
 	}
 	else{
-		message_id = string.tostring(id)
-		neighbors.listen(message_id,
-			function(vid,value,rid){
-				if(rid == 0){#if the message is from the base node
-					xpos = value[1]
-					ypos = value[2]
-					azimuth_robot_wrt_origin = value[3] #that's what I call alpha
-				}
-			}
-		)
 		neighbors.foreach(
 			function(rid,data){
 				if(rid == 0){
@@ -122,6 +112,17 @@ function simple_localization_and_go_to_goal(){
 
 # Executed at init time
 function init() { 
+	#note that the listen function can be treated as a callback function that is 
+	#defined in the init function.
+	message_id = string.tostring(id)
+	neighbors.listen(message_id,function(vid,value,rid){
+			if(rid == 0){
+				xpos = value[1]
+				ypos = value[2]
+				azimuth_robot_wrt_origin = value[3] 
+			}
+		}
+	)
 }
 
 # Executed every time step
